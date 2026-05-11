@@ -65,17 +65,24 @@ export interface AvailableVoucher {
 
 export interface MyVoucher {
   id: number;
-  customerId: number;
-  voucherId: number;
+  voucherStatus: CustomerVoucherStatus;
   availableUsage: number;
   voucherCode: string;
-  nameStore: string | null;
-  creatorType: CreatorType;
-  status: CustomerVoucherStatus;
-  obtainedAt: string;
-  usedAt: string | null;
-  expiredAt: string;
-  isCollected: boolean;
+  voucherName: string;
+  description: string;
+  customerTier: CustomerTier;
+  discountType: DiscountType;
+  discountValue: string;
+  maxDiscount: string;
+  minOrderValue: string;
+  totalStock: number;
+  availableStock: number;
+  maxCollect: number;
+  startDate: string;
+  endDate: string;
+  status: string;
+  createdAt: string;
+  collected: boolean;
 }
 
 export interface ApplicableVoucher {

@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
 import { Ticket } from "lucide-react";
 
@@ -33,6 +34,8 @@ export default function VouchersPage() {
   const [loadingAvailable, setLoadingAvailable] = useState(true);
   const [loadingMy, setLoadingMy] = useState(true);
   const [collecting, setCollecting] = useState<number | null>(null);
+  const [selectedVoucher, setSelectedVoucher] = useState<AvailableVoucher | null>(null);
+  const [selectedMyVoucher, setSelectedMyVoucher] = useState<MyVoucher | null>(null);
 
   const fetchAvailable = () => {
     if (!customerId) return;
@@ -100,29 +103,32 @@ export default function VouchersPage() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {available.map((v) => (
-                <Card key={v.id} className="overflow-hidden">
+                <Card
+                  key={v.id}
+                  className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedVoucher(v)}
+                >
                   <div className={`h-2 ${v.discountType === "PERCENT" ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-gradient-to-r from-blue-500 to-cyan-500"}`} />
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base">{v.voucherName}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-sm text-muted-foreground">{v.description}</p>
                     <div className="flex items-center justify-between">
-                      <span className="font-bold text-primary">
-                        {v.discountType === "PERCENT" ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        HSD: {formatDate(v.endDate)}
-                      </span>
+                      <CardTitle className="text-base">{v.voucherName}</CardTitle>
+                      <Badge className={`${v.status === "EXPIRED" ? "bg-red-500" : "bg-green-500"} text-white text-xs`}>
+                        {v.status === "EXPIRED" ? "Hết hạn" : "Hoạt động"}
+                      </Badge>
                     </div>
-                    <div className="text-xs text-muted-foreground">
-                      Đơn tối thiểu: {formatCurrency(v.minOrderValue)} | Còn: {v.availableStock}/{v.totalStock}
-                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-1">
+                    <span className="font-bold text-primary text-lg">
+                      {v.discountType === "PERCENT" ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
+                    </span>
+                    <p className="text-xs text-muted-foreground">
+                      HSD: {formatDate(v.startDate)} - {formatDate(v.endDate)}
+                    </p>
                     <Button
                       size="sm"
-                      className="w-full"
+                      className="w-full mt-2"
                       disabled={v.collected || collecting === v.id}
-                      onClick={() => handleCollect(v.id)}
+                      onClick={(e) => { e.stopPropagation(); handleCollect(v.id); }}
                     >
                       {v.collected ? "Đã thu thập" : collecting === v.id ? "Đang xử lý..." : "Thu thập"}
                     </Button>
@@ -158,19 +164,28 @@ export default function VouchersPage() {
           ) : (
             <div className="grid gap-3 sm:grid-cols-2">
               {myVouchers.map((v) => (
-                <Card key={v.id}>
+                <Card
+                  key={v.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => setSelectedMyVoucher(v)}
+                >
                   <CardHeader className="pb-2">
                     <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{v.voucherCode}</CardTitle>
-                      <Badge className={`${statusColors[v.status]} text-white text-xs`}>
-                        {statusLabels[v.status]}
+                      <CardTitle className="text-base">{v.voucherName || v.voucherCode}</CardTitle>
+                      <Badge className={`${statusColors[v.voucherStatus]} text-white text-xs`}>
+                        {statusLabels[v.voucherStatus]}
                       </Badge>
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    {v.nameStore && <p className="text-sm text-muted-foreground">{v.nameStore}</p>}
-                    <p className="text-xs text-muted-foreground mt-1">Còn {v.availableUsage} lượt sử dụng</p>
-                    <p className="text-xs text-muted-foreground mt-1">HSD: {formatDate(v.expiredAt)}</p>
+                  <CardContent className="space-y-1">
+                    <span className="font-bold text-primary">
+                      {v.discountType === "PERCENT" ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
+                    </span>
+                    <p className="text-xs text-muted-foreground">Mã: {v.voucherCode}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {v.voucherStatus === "USED" ? "Đã sử dụng hết" : `Còn ${v.availableUsage} lượt sử dụng`}
+                    </p>
+                    <p className="text-xs text-muted-foreground">HSD: {formatDate(v.startDate)} - {formatDate(v.endDate)}</p>
                   </CardContent>
                 </Card>
               ))}
@@ -178,6 +193,135 @@ export default function VouchersPage() {
           )}
         </TabsContent>
       </Tabs>
+
+      {/* Dialog chi tiết voucher khả dụng */}
+      <Dialog open={!!selectedVoucher} onOpenChange={(open) => { if (!open) setSelectedVoucher(null); }}>
+        <DialogContent className="max-w-md">
+          {selectedVoucher && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedVoucher.voucherName}</DialogTitle>
+                <DialogDescription>{selectedVoucher.description}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Mã voucher</span>
+                  <span className="font-medium">{selectedVoucher.voucherCode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Loại giảm giá</span>
+                  <span className="font-medium">{selectedVoucher.discountType === "PERCENT" ? "Phần trăm" : "Cố định"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Giá trị giảm</span>
+                  <span className="font-medium text-primary">
+                    {selectedVoucher.discountType === "PERCENT" ? `${selectedVoucher.discountValue}%` : formatCurrency(selectedVoucher.discountValue)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Giảm tối đa</span>
+                  <span className="font-medium">{formatCurrency(selectedVoucher.maxDiscount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Đơn tối thiểu</span>
+                  <span className="font-medium">{formatCurrency(selectedVoucher.minOrderValue)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hạng yêu cầu</span>
+                  <span className="font-medium">{selectedVoucher.customerTier === "ALL" ? "Tất cả" : selectedVoucher.customerTier}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Kho</span>
+                  <span className="font-medium">{selectedVoucher.availableStock}/{selectedVoucher.totalStock}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Thời gian</span>
+                  <span className="font-medium">{formatDate(selectedVoucher.startDate)} - {formatDate(selectedVoucher.endDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Trạng thái</span>
+                  <Badge className={`${selectedVoucher.status === "EXPIRED" ? "bg-red-500" : "bg-green-500"} text-white text-xs`}>
+                    {selectedVoucher.status === "EXPIRED" ? "Hết hạn" : "Hoạt động"}
+                  </Badge>
+                </div>
+                <Button
+                  className="w-full mt-2"
+                  disabled={selectedVoucher.collected || collecting === selectedVoucher.id}
+                  onClick={() => handleCollect(selectedVoucher.id)}
+                >
+                  {selectedVoucher.collected ? "Đã thu thập" : collecting === selectedVoucher.id ? "Đang xử lý..." : "Thu thập"}
+                </Button>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog chi tiết voucher của tôi */}
+      <Dialog open={!!selectedMyVoucher} onOpenChange={(open) => { if (!open) setSelectedMyVoucher(null); }}>
+        <DialogContent className="max-w-md">
+          {selectedMyVoucher && (
+            <>
+              <DialogHeader>
+                <DialogTitle>{selectedMyVoucher.voucherName}</DialogTitle>
+                <DialogDescription>{selectedMyVoucher.description}</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Mã voucher</span>
+                  <span className="font-medium">{selectedMyVoucher.voucherCode}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Loại giảm giá</span>
+                  <span className="font-medium">{selectedMyVoucher.discountType === "PERCENT" ? "Phần trăm" : "Cố định"}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Giá trị giảm</span>
+                  <span className="font-medium text-primary">
+                    {selectedMyVoucher.discountType === "PERCENT" ? `${selectedMyVoucher.discountValue}%` : formatCurrency(selectedMyVoucher.discountValue)}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Giảm tối đa</span>
+                  <span className="font-medium">{formatCurrency(selectedMyVoucher.maxDiscount)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Đơn tối thiểu</span>
+                  <span className="font-medium">{formatCurrency(selectedMyVoucher.minOrderValue)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hạng yêu cầu</span>
+                  <span className="font-medium">{selectedMyVoucher.customerTier === "ALL" ? "Tất cả" : selectedMyVoucher.customerTier}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Kho</span>
+                  <span className="font-medium">{selectedMyVoucher.availableStock}/{selectedMyVoucher.totalStock}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Lượt sử dụng còn</span>
+                  <span className="font-medium">
+                    {selectedMyVoucher.voucherStatus === "USED" ? "0 (Đã sử dụng)" : selectedMyVoucher.availableUsage}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Ngày nhận</span>
+                  <span className="font-medium">{formatDate(selectedMyVoucher.createdAt)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Hạn sử dụng</span>
+                  <span className="font-medium">{formatDate(selectedMyVoucher.startDate)} - {formatDate(selectedMyVoucher.endDate)}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Trạng thái</span>
+                  <Badge className={`${statusColors[selectedMyVoucher.voucherStatus]} text-white text-xs`}>
+                    {statusLabels[selectedMyVoucher.voucherStatus]}
+                  </Badge>
+                </div>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
