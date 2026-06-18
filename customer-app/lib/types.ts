@@ -216,6 +216,21 @@ export interface PaymentResult {
   status: string;
 }
 
+export interface Transaction {
+  id: number;
+  transactionId: string;
+  customerId: number;
+  invoiceId: number;
+  voucherId: number | null;
+  voucherCode: string | null;
+  originalAmount: number;
+  discountAmount: number;
+  finalAmount: number;
+  pointsEarned: number;
+  status: string;
+  createdAt: string;
+}
+
 export interface LoginRequest {
   username: string;
   password: string;

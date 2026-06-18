@@ -1,7 +1,7 @@
-export async function customerFetch(path: string, options: RequestInit = {}) {
-  const customerUrl = process.env.CUSTOMER_SERVICE_URL || "http://localhost:8000/api/customers";
-  const url = `${customerUrl}${path}`;
-  console.log("[customerFetch] URL:", url);
+const VOUCHER_URL = process.env.VOUCHER_SERVICE_URL || "http://localhost:8000/api/vouchers";
+
+export async function voucherFetch(path: string, options: RequestInit = {}) {
+  const url = `${VOUCHER_URL}${path}`;
   const res = await fetch(url, {
     ...options,
     headers: {

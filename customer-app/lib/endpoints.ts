@@ -25,4 +25,5 @@
   LEADERBOARD: "/api/leaderboard",
   INVOICES: "/api/invoices",
   PAYMENTS: "/api/payments",
+  TRANSACTIONS: "/api/transactions",
 };

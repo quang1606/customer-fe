@@ -34,6 +34,11 @@ export function formatDate(date: string | number | null | undefined): string {
   }).format(d);
 }
 
+export function formatDiscount(value: number | string): string {
+  const num = typeof value === "string" ? parseFloat(value) : value;
+  return String(num);
+}
+
 export const TIER_COLORS: Record<string, string> = {
   ALL: "#A0A0A0",
   SILVER: "#C0C0C0",

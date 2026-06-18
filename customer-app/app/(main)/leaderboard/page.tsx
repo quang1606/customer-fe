@@ -22,7 +22,9 @@ export default function LeaderboardPage() {
           setData(d);
         }
       })
-      .catch(() => {})
+      .catch(() => {
+        // API lỗi - hiển thị trống
+      })
       .finally(() => setLoading(false));
   }, []);
 

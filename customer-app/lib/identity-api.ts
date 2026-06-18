@@ -1,7 +1,7 @@
-const IDENTITY_URL = process.env.IDENTITY_SERVICE_URL || "http://localhost:8081";
-
 export async function identityFetch(path: string, options: RequestInit = {}) {
-  const url = `${IDENTITY_URL}${path}`;
+  const identityUrl = process.env.IDENTITY_SERVICE_URL || "http://localhost:8000/api/identity";
+  const url = `${identityUrl}${path}`;
+  console.log("[identityFetch] URL:", url);
   const res = await fetch(url, {
     ...options,
     headers: {

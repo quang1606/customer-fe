@@ -1,25 +1,29 @@
 import { NextResponse } from "next/server";
 import { customerFetch } from "@/lib/customer-api";
-import { MOCK_INVOICES, mockResponse } from "@/lib/mock-data";
+import { mockResponse, MOCK_TRANSACTIONS } from "@/lib/mock-data";
 
 export async function GET(req: Request) {
   if (process.env.USE_MOCK === "true") {
-    return NextResponse.json(mockResponse(MOCK_INVOICES));
+    return NextResponse.json(mockResponse(MOCK_TRANSACTIONS));
   }
   try {
     const authHeader = req.headers.get("authorization");
-    console.log("[Invoices] Authorization header:", authHeader);
+    console.log("[Transactions] Authorization header:", authHeader);
     const { searchParams } = new URL(req.url);
     const query = searchParams.toString();
+
     const { data, status, ok } = await customerFetch(
-      `/api/customers/invoices?${query}`,
-      { headers: { ...(authHeader ? { Authorization: authHeader } : {}) } }
+      `/api/customers/transactions?${query}`,
+      {
+        method: "GET",
+        headers: { ...(authHeader ? { Authorization: authHeader } : {}) },
+      }
     );
-    console.log("[Invoices] Upstream response status:", status, "data:", JSON.stringify(data));
+    console.log("[Transactions] Upstream response status:", status, "data:", JSON.stringify(data));
     if (!ok) return NextResponse.json(data, { status });
     return NextResponse.json(data);
   } catch (e) {
-    console.error("[Invoices] Error:", e);
+    console.error("[Transactions] Error:", e);
     return NextResponse.json({ message: "Internal error" }, { status: 500 });
   }
 }

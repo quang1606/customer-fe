@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "@/lib/auth";
 import { voucherService } from "@/lib/services/voucherService";
 import { AvailableVoucher, MyVoucher, CustomerVoucherStatus } from "@/lib/types";
-import { formatCurrency, formatDate } from "@/lib/utils";
+import { formatCurrency, formatDate, formatDiscount } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,7 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "@/hooks/use-toast";
-import { Ticket } from "lucide-react";
+import { Ticket, ChevronLeft, ChevronRight } from "lucide-react";
+
+const PAGE_SIZE = 10;
 
 const statusColors: Record<CustomerVoucherStatus, string> = {
   AVAILABLE: "bg-green-500",
@@ -37,35 +39,43 @@ export default function VouchersPage() {
   const [selectedVoucher, setSelectedVoucher] = useState<AvailableVoucher | null>(null);
   const [selectedMyVoucher, setSelectedMyVoucher] = useState<MyVoucher | null>(null);
 
-  const fetchAvailable = () => {
-    if (!customerId) return;
+  // Pagination state for available vouchers
+  const [availablePage, setAvailablePage] = useState(0);
+  const [availableTotalPages, setAvailableTotalPages] = useState(0);
+
+  // Pagination state for my vouchers
+  const [myPage, setMyPage] = useState(0);
+  const [myTotalPages, setMyTotalPages] = useState(0);
+
+  const fetchAvailable = (page = availablePage) => {
     setLoadingAvailable(true);
     voucherService
-      .getAvailable(customerId)
+      .getAvailable(customerId || "mock", page, PAGE_SIZE)
       .then((res) => {
         const d = res.data?.data;
         setAvailable(Array.isArray(d?.data) ? d.data : []);
+        setAvailableTotalPages(d?.totalPages || 0);
       })
       .catch(() => {})
       .finally(() => setLoadingAvailable(false));
   };
 
-  const fetchMyVouchers = () => {
-    if (!customerId) return;
+  const fetchMyVouchers = (page = myPage) => {
     setLoadingMy(true);
     const status = statusFilter === "ALL" ? undefined : statusFilter;
     voucherService
-      .getMyVouchers(customerId, status)
+      .getMyVouchers(customerId || "mock", status, page, PAGE_SIZE)
       .then((res) => {
         const d = res.data?.data;
         setMyVouchers(Array.isArray(d?.data) ? d.data : []);
+        setMyTotalPages(d?.totalPages || 0);
       })
       .catch(() => {})
       .finally(() => setLoadingMy(false));
   };
 
-  useEffect(() => { fetchAvailable(); }, [customerId]);
-  useEffect(() => { fetchMyVouchers(); }, [customerId, statusFilter]);
+  useEffect(() => { fetchAvailable(0); setAvailablePage(0); }, [customerId]);
+  useEffect(() => { fetchMyVouchers(0); setMyPage(0); }, [customerId, statusFilter]);
 
   const handleCollect = async (voucherId: number) => {
     if (!customerId) return;
@@ -101,41 +111,66 @@ export default function VouchersPage() {
               <p>Không có voucher khả dụng</p>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {available.map((v) => (
-                <Card
-                  key={v.id}
-                  className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedVoucher(v)}
-                >
-                  <div className={`h-2 ${v.discountType === "PERCENT" ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-gradient-to-r from-blue-500 to-cyan-500"}`} />
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{v.voucherName}</CardTitle>
-                      <Badge className={`${v.status === "EXPIRED" ? "bg-red-500" : "bg-green-500"} text-white text-xs`}>
-                        {v.status === "EXPIRED" ? "Hết hạn" : "Hoạt động"}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                    <span className="font-bold text-primary text-lg">
-                      {v.discountType === "PERCENT" ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
-                    </span>
-                    <p className="text-xs text-muted-foreground">
-                      HSD: {formatDate(v.startDate)} - {formatDate(v.endDate)}
-                    </p>
-                    <Button
-                      size="sm"
-                      className="w-full mt-2"
-                      disabled={v.collected || collecting === v.id}
-                      onClick={(e) => { e.stopPropagation(); handleCollect(v.id); }}
-                    >
-                      {v.collected ? "Đã thu thập" : collecting === v.id ? "Đang xử lý..." : "Thu thập"}
-                    </Button>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {available.map((v) => (
+                  <Card
+                    key={v.id}
+                    className="overflow-hidden cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedVoucher(v)}
+                  >
+                    <div className={`h-2 ${v.discountType === "PERCENT" ? "bg-gradient-to-r from-purple-500 to-pink-500" : "bg-gradient-to-r from-blue-500 to-cyan-500"}`} />
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{v.voucherName}</CardTitle>
+                        <Badge className={`${v.status === "EXPIRED" ? "bg-red-500" : "bg-green-500"} text-white text-xs`}>
+                          {v.status === "EXPIRED" ? "Hết hạn" : "Hoạt động"}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-1">
+                      <span className="font-bold text-primary text-lg">
+                        {v.discountType === "PERCENT" ? `${formatDiscount(v.discountValue)}%` : formatCurrency(v.discountValue)}
+                      </span>
+                      <p className="text-xs text-muted-foreground">
+                        HSD: {formatDate(v.startDate)} - {formatDate(v.endDate)}
+                      </p>
+                      <Button
+                        size="sm"
+                        className="w-full mt-2"
+                        disabled={v.collected || collecting === v.id}
+                        onClick={(e) => { e.stopPropagation(); handleCollect(v.id); }}
+                      >
+                        {v.collected ? "Đã thu thập" : collecting === v.id ? "Đang xử lý..." : "Thu thập"}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {availableTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={availablePage === 0}
+                    onClick={() => { const p = availablePage - 1; setAvailablePage(p); fetchAvailable(p); }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Trang {availablePage + 1} / {availableTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={availablePage >= availableTotalPages - 1}
+                    onClick={() => { const p = availablePage + 1; setAvailablePage(p); fetchAvailable(p); }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -162,34 +197,59 @@ export default function VouchersPage() {
               <p>Chưa có voucher nào</p>
             </div>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
-              {myVouchers.map((v) => (
-                <Card
-                  key={v.id}
-                  className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => setSelectedMyVoucher(v)}
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-base">{v.voucherName || v.voucherCode}</CardTitle>
-                      <Badge className={`${statusColors[v.voucherStatus]} text-white text-xs`}>
-                        {statusLabels[v.voucherStatus]}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-1">
-                    <span className="font-bold text-primary">
-                      {v.discountType === "PERCENT" ? `${v.discountValue}%` : formatCurrency(v.discountValue)}
-                    </span>
-                    <p className="text-xs text-muted-foreground">Mã: {v.voucherCode}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {v.voucherStatus === "USED" ? "Đã sử dụng hết" : `Còn ${v.availableUsage} lượt sử dụng`}
-                    </p>
-                    <p className="text-xs text-muted-foreground">HSD: {formatDate(v.startDate)} - {formatDate(v.endDate)}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
+            <>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {myVouchers.map((v) => (
+                  <Card
+                    key={v.id}
+                    className="cursor-pointer hover:shadow-md transition-shadow"
+                    onClick={() => setSelectedMyVoucher(v)}
+                  >
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base">{v.voucherName || v.voucherCode}</CardTitle>
+                        <Badge className={`${statusColors[v.voucherStatus]} text-white text-xs`}>
+                          {statusLabels[v.voucherStatus]}
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-1">
+                      <span className="font-bold text-primary">
+                        {v.discountType === "PERCENT" ? `${formatDiscount(v.discountValue)}%` : formatCurrency(v.discountValue)}
+                      </span>
+                      <p className="text-xs text-muted-foreground">Mã: {v.voucherCode}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {v.voucherStatus === "USED" ? "Đã sử dụng hết" : `Còn ${v.availableUsage} lượt sử dụng`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">HSD: {formatDate(v.startDate)} - {formatDate(v.endDate)}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+              {myTotalPages > 1 && (
+                <div className="flex items-center justify-center gap-2 mt-4">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={myPage === 0}
+                    onClick={() => { const p = myPage - 1; setMyPage(p); fetchMyVouchers(p); }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="text-sm text-muted-foreground">
+                    Trang {myPage + 1} / {myTotalPages}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={myPage >= myTotalPages - 1}
+                    onClick={() => { const p = myPage + 1; setMyPage(p); fetchMyVouchers(p); }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
       </Tabs>
@@ -215,7 +275,7 @@ export default function VouchersPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Giá trị giảm</span>
                   <span className="font-medium text-primary">
-                    {selectedVoucher.discountType === "PERCENT" ? `${selectedVoucher.discountValue}%` : formatCurrency(selectedVoucher.discountValue)}
+                    {selectedVoucher.discountType === "PERCENT" ? `${formatDiscount(selectedVoucher.discountValue)}%` : formatCurrency(selectedVoucher.discountValue)}
                   </span>
                 </div>
                 <div className="flex justify-between">
@@ -278,7 +338,7 @@ export default function VouchersPage() {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Giá trị giảm</span>
                   <span className="font-medium text-primary">
-                    {selectedMyVoucher.discountType === "PERCENT" ? `${selectedMyVoucher.discountValue}%` : formatCurrency(selectedMyVoucher.discountValue)}
+                    {selectedMyVoucher.discountType === "PERCENT" ? `${formatDiscount(selectedMyVoucher.discountValue)}%` : formatCurrency(selectedMyVoucher.discountValue)}
                   </span>
                 </div>
                 <div className="flex justify-between">

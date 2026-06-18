@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useAuthStore } from "@/lib/auth";
 import { BottomNav } from "./bottom-nav";
-import { Home, Ticket, Target, Trophy, Receipt, CreditCard, User, LogOut } from "lucide-react";
+import { Home, Ticket, Target, Trophy, Receipt, CreditCard, User, LogOut, History } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "../ui/button";
 
@@ -15,6 +15,7 @@ const sidebarItems = [
   { href: "/leaderboard", label: "Xếp hạng", icon: Trophy },
   { href: "/invoices", label: "Hóa đơn", icon: Receipt },
   { href: "/payment", label: "Thanh toán", icon: CreditCard },
+  { href: "/transactions", label: "Lịch sử GD", icon: History },
   { href: "/profile", label: "Cá nhân", icon: User },
 ];
 
